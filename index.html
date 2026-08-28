@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QIW | Field Material Request Portal</title>
+    <meta name="description" content="Quality Ironworks internal portal for field-generated manual material requests. Create, preview, download, and email engineering order sheets.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- html2pdf.js (Local for offline/file-based security compatibility) -->
+    <script src="html2pdf.bundle.min.js"></script>
+    <!-- SheetJS Excel Library (Local for offline/file-based security compatibility) -->
+    <script src="xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css?v=21">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <nav class="nav-header">
+        <div class="nav-container">
+            <div class="logo-area">
+                <!-- Premium Custom QIW SVG Logo -->
+                <svg class="qiw-logo" viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="ironGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ff7b00" />
+                            <stop offset="100%" stop-color="#cc5200" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Steel I-beam structural background -->
+                    <path d="M 15,10 H 85 V 25 H 58 V 75 H 85 V 90 H 15 V 75 H 42 V 25 H 15 Z" fill="url(#ironGrad)" />
+                    <!-- Q character in white overlay -->
+                    <circle cx="50" cy="50" r="18" fill="none" stroke="#ffffff" stroke-width="4" />
+                    <line x1="60" y1="60" x2="72" y2="72" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+                </svg>
+                <div class="brand-text">
+                    <span class="company-name">QUALITY IRONWORKS</span>
+                    <span class="portal-tag">MATERIAL REQUEST PORTAL</span>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <div class="drafting-controls" id="draftingControls" style="display: flex; gap: 8px; align-items: center; background: var(--bg-surface-solid); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-right: 8px;">
+                    <span style="font-family: var(--font-headers); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; color: var(--accent-orange); margin-right: 4px;">Drafting Area:</span>
+                    <button type="button" id="toolPencil" class="btn btn-sm btn-primary" title="Pencil Tool" style="padding: 4px 8px; font-size: 0.75rem;">
+                        <i class="ph-bold ph-pencil"></i> Draw
+                    </button>
+                    <button type="button" id="toolEraser" class="btn btn-sm btn-secondary" title="Eraser Tool" style="padding: 4px 8px; font-size: 0.75rem;">
+                        <i class="ph-bold ph-eraser"></i> Eraser
+                    </button>
+                    <button type="button" id="toolClear" class="btn btn-sm btn-secondary" style="color: var(--status-danger); padding: 4px 8px; font-size: 0.75rem;" title="Clear Drafting Area">
+                        <i class="ph-bold ph-trash"></i> Clear All
+                    </button>
+                </div>
+                <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle theme">
+                    <i class="ph-bold ph-moon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace Container -->
+    <main class="workspace-container">
+        <div class="grid-layout">
+            
+            <!-- Left Side: Interactive Inputs -->
+            <section class="panel-inputs glass-card">
+                <div class="panel-header">
+                    <i class="ph-duotone ph-list-checks icon-accent"></i>
+                    <h2>Request Parameters</h2>
+                </div>
+
+                <!-- Private Network Access/Offline Warning Banner -->
+                <div id="privateNetworkWarning" class="pna-warning-banner hidden">
+                    <i class="ph-bold ph-warning-octagon warning-icon"></i>
+                    <div class="warning-text">
+                        <h4>Direct Outlook Attachment Disabled</h4>
+                        <p>You opened this page as a local file. Browsers block direct attachments in offline mode. Please run <code>run_server.ps1</code> and open: <a href="http://localhost:8080/index.html" target="_blank" class="warning-link">http://localhost:8080/index.html</a></p>
+                    </div>
+                </div>
+
+                <!-- Prominent Reference Guides Callout Banner -->
+                <div class="user-guide-banner">
+                    <div class="banner-content">
+                        <i class="ph-duotone ph-book-open icon-accent banner-icon"></i>
+                        <div class="banner-text">
+                            <h4>QIW Reference Guides & Parts Standards</h4>
+                            <p>Instantly search standard materials callouts, steel sizing conventions, and parts catalogues.</p>
+                        </div>
+                    </div>
+                    <button type="button" id="userGuideBannerBtn" class="btn btn-primary btn-sm">
+                        <i class="ph-bold ph-eye"></i> View Guides
+                    </button>
+                </div>
+                
+                <form id="materialRequestForm" class="request-form">
+                    
+                    <!-- Date Group -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="requestDate">Request Date <span class="required">*</span></label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-calendar-blank"></i>
+                                <input type="date" id="requestDate" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="deliveryDate">Delivery / Ship Date <span class="required">*</span></label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-calendar-check"></i>
+                                <input type="date" id="deliveryDate" required>
+                            </div>
+                            <p class="field-subtext" style="color: var(--accent-orange); font-size: 0.68rem; margin-top: 2px; text-transform: none; font-weight: 500; line-height: 1.2;">
+                                Ship date can only be the minimum of 48 hrs from the request date. If you need prior to that, confirm in the shop.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Job Selection Group -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="jobNumber">Job Number <span class="required">*</span></label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-hash"></i>
+                                <select id="jobNumber" required>
+                                    <option value="" disabled selected>Select Job Number...</option>
+                                    <!-- Job Numbers generated by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="jobName">Job Name</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-buildings"></i>
+                                <input type="text" id="jobName" placeholder="Auto-populated" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Job Entries (Collapsible) -->
+                    <div id="customJobGroup" class="collapsible-container hidden">
+                        <div class="form-row-2 custom-glow-box">
+                            <div class="form-group">
+                                <label for="customJobNumber">Custom Job Number <span class="required">*</span></label>
+                                <input type="text" id="customJobNumber" placeholder="Enter Job Number (e.g. 99999)">
+                            </div>
+                            <div class="form-group">
+                                <label for="customJobName">Custom Job Name <span class="required">*</span></label>
+                                <input type="text" id="customJobName" placeholder="Enter Job Name (e.g. Dallas Downtown Hub)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category & Subcategory -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="categoryName">Category <span class="required">*</span></label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-folders"></i>
+                                <select id="categoryName" required>
+                                    <option value="" disabled selected>Select Category...</option>
+                                    <option value="00 Embeds">00 Embeds</option>
+                                    <option value="01 Structural">01 Structural</option>
+                                    <option value="02 Stairs">02 Stairs</option>
+                                    <option value="03 Miscellaneous">03 Miscellaneous</option>
+                                    <option value="04 Ornamental">04 Ornamental</option>
+                                    <option value="Manual Request">Manual Request</option>
+                                    <option value="Custom">Custom Category</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="subcategoryName">Subcategory Name <span class="required">*</span></label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-folder-open"></i>
+                                <input type="text" id="subcategoryName" required placeholder="e.g. Clip Angles, Anchor Bolts">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Category Entry (Collapsible) -->
+                    <div id="customCategoryGroup" class="collapsible-container hidden">
+                        <div class="form-group custom-glow-box">
+                            <label for="customCategoryName">Custom Category Name <span class="required">*</span></label>
+                            <input type="text" id="customCategoryName" placeholder="Type custom category name...">
+                        </div>
+                    </div>
+
+                    <!-- Product Finish & Location -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="productFinish">Product Finish <span class="required">*</span></label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-paint-brush-broad"></i>
+                                <select id="productFinish" required>
+                                    <option value="" disabled selected>Select Finish...</option>
+                                    <option value="Primer">Primer</option>
+                                    <option value="Raw">Raw</option>
+                                    <option value="Galvanized">Galvanized</option>
+                                    <option value="Custom">Custom...</option>
+                                </select>
+                            </div>
+                            <div id="customProductFinishGroup" class="collapsible-container hidden" style="margin-top: 4px;">
+                                <input type="text" id="customProductFinish" placeholder="Enter custom finish...">
+                            </div>
+                            <div class="checkbox-container" style="margin-top: 4px;">
+                                <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; text-transform: none; color: var(--text-secondary); cursor: pointer;">
+                                    <input type="checkbox" id="applyFinishToAll" checked style="width: auto; cursor: pointer;">
+                                    Apply this finish to all items
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Location / Delivery <span class="required">*</span></label>
+                            <div class="radio-toggle-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="location" value="Pick up parts room" checked>
+                                    <span class="radio-custom">Pick Up Parts Room</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="location" value="Deliver at job location">
+                                    <span class="radio-custom">Deliver at Job Location</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reason -->
+                    <div class="form-group">
+                        <label for="reason">Reason / Notes</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-chat-text text-textarea-icon"></i>
+                            <textarea id="reason" rows="2" placeholder="Explain reason for material request..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Value Slots Selection -->
+                    <div class="form-group">
+                        <label>Value Configuration <span class="required">*</span></label>
+                        <p class="field-subtext">Determines which accounting block is filled on the request sheet.</p>
+                        <div class="value-selector-cards">
+                            <label class="value-card">
+                                <input type="radio" name="valueConfig" value="$1" checked>
+                                <div class="value-card-content">
+                                    <span class="val-amount">$1</span>
+                                    <span class="val-label">No Value Box</span>
+                                </div>
+                            </label>
+                            <label class="value-card">
+                                <input type="radio" name="valueConfig" value="$2">
+                                <div class="value-card-content">
+                                    <span class="val-amount">$2</span>
+                                    <span class="val-label">C/O Slot</span>
+                                </div>
+                            </label>
+                            <label class="value-card">
+                                <input type="radio" name="valueConfig" value="$3">
+                                <div class="value-card-content">
+                                    <span class="val-amount">$3</span>
+                                    <span class="val-label">C/O Slot</span>
+                                </div>
+                            </label>
+                            <label class="value-card">
+                                <input type="radio" name="valueConfig" value="Scope item">
+                                <div class="value-card-content">
+                                    <span class="val-amount">Scope</span>
+                                    <span class="val-label">Contract Slot</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Part: Dynamic Item Builder -->
+                    <div class="items-builder-section">
+                        <div class="builder-header">
+                            <h3><i class="ph ph-package icon-accent"></i> Line Items Builder</h3>
+                            <span class="badge" id="itemCountBadge">0 Items</span>
+                        </div>
+                        <div class="builder-form-grid">
+                            <div class="form-group builder-col-qty">
+                                <label for="itemPcs">Qty</label>
+                                <input type="number" id="itemPcs" min="1" placeholder="Qty">
+                            </div>
+                            <div class="form-group builder-col-shape">
+                                <label for="itemShape">Shape</label>
+                                <select id="itemShape">
+                                    <option value="" disabled selected>Shape...</option>
+                                    <option value="W">W</option>
+                                    <option value="WT">WT</option>
+                                    <option value="HSS">HSS</option>
+                                    <option value="HSSR">HSSR</option>
+                                    <option value="C">C</option>
+                                    <option value="MC">MC</option>
+                                    <option value="L">L</option>
+                                    <option value="PL">PL</option>
+                                    <option value="SQBR">SQBR</option>
+                                    <option value="GR">GR</option>
+                                    <option value="MDG">MDG</option>
+                                    <option value="WWM">WWM</option>
+                                    <option value="XF">XF</option>
+                                    <option value="CP">CP</option>
+                                    <option value="KP">KP</option>
+                                    <option value="BY">BY</option>
+                                    <option value="QIW">QIW</option>
+                                </select>
+                            </div>
+                            <div class="form-group builder-col-desc">
+                                <label for="itemDesc">Dimension</label>
+                                <input type="text" id="itemDesc" placeholder="e.g. 8x10...">
+                            </div>
+                            <div class="form-group builder-col-ft">
+                                <label for="itemFeet">Ft</label>
+                                <input type="number" id="itemFeet" min="0" placeholder="Ft">
+                            </div>
+                            <div class="form-group builder-col-in">
+                                <label for="itemInches">In</label>
+                                <input type="number" id="itemInches" min="0" max="11" placeholder="In">
+                            </div>
+                            <div class="form-group builder-col-fraction">
+                                <label for="itemFraction">Frac</label>
+                                <select id="itemFraction" style="padding: 10px 8px;">
+                                    <option value="" selected>-</option>
+                                    <option value="1/16">1/16</option>
+                                    <option value="1/8">1/8</option>
+                                    <option value="3/16">3/16</option>
+                                    <option value="1/4">1/4</option>
+                                    <option value="5/16">5/16</option>
+                                    <option value="3/8">3/8</option>
+                                    <option value="7/16">7/16</option>
+                                    <option value="1/2">1/2</option>
+                                    <option value="9/16">9/16</option>
+                                    <option value="5/8">5/8</option>
+                                    <option value="11/16">11/16</option>
+                                    <option value="3/4">3/4</option>
+                                    <option value="13/16">13/16</option>
+                                    <option value="7/8">7/8</option>
+                                    <option value="15/16">15/16</option>
+                                </select>
+                            </div>
+                            <div class="form-group builder-col-finish">
+                                <label for="itemFinish">Finish</label>
+                                <select id="itemFinish">
+                                    <option value="" disabled selected>Finish...</option>
+                                    <option value="Primer">Primer</option>
+                                    <option value="Raw">Raw</option>
+                                    <option value="Galvanized">Galvanized</option>
+                                    <option value="Custom">Custom...</option>
+                                </select>
+                                <input type="text" id="customItemFinish" class="hidden" style="margin-top: 4px;" placeholder="Custom finish">
+                            </div>
+                        </div>
+                        <button type="button" id="addItemBtn" class="btn btn-secondary mt-1 btn-block">
+                            <i class="ph-bold ph-plus-circle"></i> Add Item to Request
+                        </button>
+
+                        <!-- Added Items list -->
+                        <div class="added-items-container mt-1">
+                            <ul id="addedItemsList" class="items-drag-list">
+                                <!-- Populated dynamically by JS -->
+                                <li class="empty-list-msg">No items added yet. Formulate items using the builder above.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Submission Action Panel -->
+                    <div class="actions-panel">
+                        <button type="button" id="downloadPdfBtn" class="btn btn-primary btn-large">
+                            <i class="ph-bold ph-download-simple"></i> PDF and FBOM Download
+                        </button>
+                        <button type="button" id="emailBtn" class="btn btn-accent btn-large">
+                            <i class="ph-bold ph-envelope-simple"></i> Email Request
+                        </button>
+                    </div>
+
+                </form>
+            </section>
+
+            <!-- Right Side: Live High-Fidelity PDF Preview -->
+            <section class="panel-preview">
+                <div class="preview-sticky-wrapper">
+                    <div class="preview-header">
+                        <div class="preview-header-title">
+                            <i class="ph-bold ph-eye icon-accent"></i>
+                            <h3>Live Document Preview</h3>
+                        </div>
+                        <span class="preview-note">Form matches PDF output layout</span>
+                    </div>
+
+                    <!-- Visual Container showing the document scaling on screen -->
+                    <div class="document-canvas-container">
+                        <!-- This is the actual DOM node targetted for html2pdf -->
+                        <div id="requestDocument" class="request-sheet">
+                            
+                            <!-- Sheet Border/Frame -->
+                            <div class="sheet-frame">
+                                
+                                <!-- Sheet Header Title -->
+                                <div class="sheet-main-title">
+                                    Manual Shop Drawing
+                                </div>
+
+                                <!-- Job and Dates Info Block Grid Table -->
+                                <table class="sheet-info-table">
+                                    <tbody>
+                                        <!-- Row 1 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Request Date</td>
+                                            <td id="previewReqDate">-- / -- / ----</td>
+                                            <td class="lbl-white">Weld - Fab #</td>
+                                            <td></td>
+                                            <td rowspan="2" class="lbl-white text-center font-sm">Check which applies</td>
+                                        </tr>
+                                        <!-- Row 2 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Delivery Date</td>
+                                            <td id="previewDelDate" class="text-red bold">-- / -- / ----</td>
+                                            <td class="lbl-white">Material Request #</td>
+                                            <td></td>
+                                        </tr>
+                                        <!-- Row 3 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Install Date</td>
+                                            <td></td>
+                                            <td class="lbl-yellow">Category Name</td>
+                                            <td colspan="2" id="previewCategory">-----</td>
+                                        </tr>
+                                        <!-- Row 4 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Job Name</td>
+                                            <td id="previewJobName">Select a project...</td>
+                                            <td class="lbl-yellow">Subcategory Name</td>
+                                            <td colspan="2" id="previewSubcategory">-----</td>
+                                        </tr>
+                                        <!-- Row 5 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Job #</td>
+                                            <td id="previewJobNum" class="bold">-----</td>
+                                            <td class="lbl-yellow">Product Finish</td>
+                                            <td colspan="2" id="previewFinish">-----</td>
+                                        </tr>
+                                        <!-- Row 6 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Submitted By</td>
+                                            <td></td>
+                                            <td class="lbl-yellow">Pickup At Parts Room</td>
+                                            <td id="previewPickupChecked" class="text-center bold"></td>
+                                            <td rowspan="2" class="lbl-white text-center font-sm">Check which applies</td>
+                                        </tr>
+                                        <!-- Row 7 -->
+                                        <tr>
+                                            <td></td>
+                                            <td></td>
+                                            <td class="lbl-yellow">Delivery At Job Site</td>
+                                            <td id="previewDeliveryChecked" class="text-center bold"></td>
+                                        </tr>
+                                        <!-- Row 8 -->
+                                        <tr>
+                                            <td class="lbl-yellow">Reason</td>
+                                            <td colspan="4" id="previewReason">-----</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Value Slots Matrix (Yellow Row) -->
+                                <table class="sheet-value-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="lbl-yellow font-bold" style="width: 40%; text-align: left; padding-left: 8px;">
+                                                Contract Value $ <span id="fillContract" style="font-weight: 900; margin-left: 8px;"></span>
+                                            </td>
+                                            <td class="lbl-yellow font-bold" style="width: 30%;">
+                                                C/O <span id="fillCO" style="font-weight: 900; margin-left: 8px;"></span>
+                                            </td>
+                                            <td class="lbl-yellow font-bold" style="width: 30%;">
+                                                No Value <span id="fillNoValue" style="font-weight: 900; margin-left: 8px;"></span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Huge White Spacer Area -->
+                                <div class="sheet-blank-spacer" style="display: flex; align-items: center; justify-content: center; position: relative; min-height: 280px;">
+                                    <canvas id="draftingCanvas" width="740" height="280" style="background-color: transparent; cursor: crosshair; display: block; position: absolute; left: 1px; top: 0;"></canvas>
+                                </div>
+
+                                <!-- Material Items Table (Yellow Theme Bottom Table) -->
+                                <table class="sheet-bottom-table">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="2" style="width: 10%;">QTY</th>
+                                            <th rowspan="2" style="width: 32%;">DESCRIPTION</th>
+                                            <th colspan="2" style="width: 16%;">LENGTH</th>
+                                            <th rowspan="2" style="width: 12%;">GRADE</th>
+                                            <th rowspan="2" style="width: 16%;">FINISH</th>
+                                            <th rowspan="2" style="width: 14%;">REMARKS</th>
+                                        </tr>
+                                        <tr>
+                                            <th style="width: 8%;">FT</th>
+                                            <th style="width: 8%;">IN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewTableBody">
+                                        <!-- Will populate dynamically up to exactly 8 rows -->
+                                    </tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modal Portal: User Guide & Standards Attachment Manager -->
+    <div id="userGuideModal" class="modal-overlay hidden">
+        <div class="modal-card glass-card modal-large">
+            <div class="modal-header">
+                <div class="modal-header-title">
+                    <i class="ph-bold ph-book-open icon-accent"></i>
+                    <h2>QIW Standards & User Guide Portal</h2>
+                </div>
+                <button class="modal-close-btn" id="closeUserGuideModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                
+                <div class="modal-tabs">
+                    <button class="tab-btn active" data-tab="tabCallouts">
+                        <i class="ph ph-ruler"></i> QIW STANDARD Material Callouts
+                    </button>
+                    <button class="tab-btn" data-tab="tabParts">
+                        <i class="ph ph-nut"></i> QIW STANDARD Parts Catalog
+                    </button>
+                </div>
+
+                <div class="tab-content-container">
+                    
+                    <!-- Tab 1: Material Callouts -->
+                    <div class="tab-content active" id="tabCallouts">
+                        <div class="tab-actions-bar">
+                            <p class="tab-info-text">Field guidelines for designating steel sizes, structural components, and detailing abbreviations.</p>
+                            <div class="tab-actions">
+                                <button class="btn btn-secondary btn-sm" id="btnPreviewCallouts">
+                                    <i class="ph ph-eye"></i> Fit Layout Preview
+                                </button>
+                                <a href="assets/QIW_Standard_Materials_Callouts.pdf" download="QIW_Standard_Materials_Callouts.pdf" class="btn btn-primary btn-sm">
+                                    <i class="ph ph-download-simple"></i> Download Standard PDF
+                                </a>
+                            </div>
+                        </div>
+                        <div class="document-preview-frame">
+                            <iframe src="assets/QIW_Standard_Materials_Callouts.pdf" class="standard-iframe" id="calloutsFrame"></iframe>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Standard Parts -->
+                    <div class="tab-content" id="tabParts">
+                        <div class="tab-actions-bar">
+                            <p class="tab-info-text">Standardized parts inventory catalog including stair treads, embeds, clips, and standard mounting hardware.</p>
+                            <div class="tab-actions">
+                                <button class="btn btn-secondary btn-sm" id="btnPreviewParts">
+                                    <i class="ph ph-eye"></i> Fit Layout Preview
+                                </button>
+                                <a href="assets/QIW_Standard_Parts_Book.pdf" download="QIW_Standard_Parts_Book.pdf" class="btn btn-primary btn-sm">
+                                    <i class="ph ph-download-simple"></i> Download Standard PDF
+                                </a>
+                            </div>
+                        </div>
+                        <div class="document-preview-frame">
+                            <iframe src="assets/QIW_Standard_Parts_Book.pdf" class="standard-iframe" id="partsFrame"></iframe>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Prompt Modal for Preview/Email -->
+    <div id="emailPromptModal" class="modal-overlay hidden">
+        <div class="modal-card glass-card modal-small text-center">
+            <div class="modal-icon-center">
+                <i class="ph-bold ph-envelope-open-text pulse-animation"></i>
+            </div>
+            <h2>Prepare Outlook Dispatch</h2>
+            <p>Would you like to review the generated PDF document preview before launching Outlook?</p>
+            <div class="prompt-choices mt-2">
+                <button class="btn btn-secondary" id="btnEmailDirect">
+                    <i class="ph ph-envelope"></i> Send Directly
+                </button>
+                <button class="btn btn-primary" id="btnEmailWithPreview">
+                    <i class="ph ph-eye"></i> Preview Sheet First
+                </button>
+            </div>
+            <button class="modal-cancel-text-btn mt-1" id="cancelEmailPrompt">Cancel Action</button>
+        </div>
+    </div>
+
+    <!-- Interactive Email Instructions Helper Modal -->
+    <div id="emailHelperModal" class="modal-overlay hidden">
+        <div class="modal-card glass-card modal-small text-center" style="padding: 24px;">
+            <div class="modal-icon-center" style="color: #2563eb;">
+                <i class="ph-bold ph-file-arrow-up pulse-animation"></i>
+            </div>
+            <h2 style="font-size: 1.3rem; margin-bottom: 8px;">Outlook Opened & PDF Saved!</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
+                Your Manual Shop Drawing PDF has been generated and saved locally.
+            </p>
+            
+            <div class="helper-steps" style="text-align: left; background: rgba(0,0,0,0.15); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 16px; font-size: 0.8rem; line-height: 1.45;">
+                <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: start;">
+                    <span style="background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; flex-shrink: 0; margin-top: 2px;">1</span>
+                    <span>Check your browser's <strong>Downloads</strong> folder for the file: <br><strong style="font-family: monospace; color: var(--accent-orange); word-break: break-all;" id="helperFilename">QIW_Manual_Shop_Drawing_...pdf</strong></span>
+                </div>
+                <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: start;">
+                    <span style="background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; flex-shrink: 0; margin-top: 2px;">2</span>
+                    <span>An Outlook email has been opened in the background with pre-populated CCs (<strong>Manual@qiworks.com</strong>).</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: start;">
+                    <span style="background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; flex-shrink: 0; margin-top: 2px;">3</span>
+                    <span>Simply <strong>drag and drop</strong> the downloaded PDF into your Outlook window to attach it!</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-block" id="closeEmailHelperBtn">
+                <i class="ph ph-check-circle"></i> Got It, Attach File
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js?v=21"></script>
+</body>
+</html>

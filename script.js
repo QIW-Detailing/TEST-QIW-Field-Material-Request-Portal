@@ -581,11 +581,11 @@ function setupEventListeners() {
         "HSS": /[^0-9x\/. gGvVaA\-]/gi,
         "HSSR": /[^0-9x\/. gGvVaA\-]/gi,
         "SQBR": /[^0-9\/.]/gi,
-        "GR": /[^0-9x\/. wWiIdDtThH\-]/gi,
-        "MDG": /[^0-9x\/. wWiIdDtThH\-]/gi,
-        "WWM": /[^0-9x\/. wWiIdDtThH\*\- ]/gi,
-        "XF": /[^0-9x\/. wWiIdDtThH\-]/gi,
-        "KP": /[^0-9a-zA-Z]/gi
+        "GR": /[^a-zA-Z0-9x\/.\- *#]/gi,
+        "MDG": /[^a-zA-Z0-9x\/.\- *#]/gi,
+        "WWM": /[^a-zA-Z0-9x\/.\- *#]/gi,
+        "XF": /[^a-zA-Z0-9x\/.\- *#]/gi,
+        "KP": /[^0-9a-zA-Z\-]/gi
     };
 
     shapeSelect.addEventListener("change", () => {

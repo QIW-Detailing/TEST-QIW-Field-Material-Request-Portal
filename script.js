@@ -90,7 +90,7 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
                  (window.innerWidth <= 768 && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
 
 // 3. Document Ready Setup
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
     initializeFormDefaults();
     buildJobDropdown();
     setupEventListeners();
@@ -105,7 +105,13 @@ document.addEventListener("DOMContentLoaded", () => {
             warningBanner.classList.remove("hidden");
         }
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}
 
 // Get default material grade based on QIW standard layout
 function getDefaultGrade(shape) {

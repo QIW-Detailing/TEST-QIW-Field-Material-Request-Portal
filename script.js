@@ -1465,7 +1465,6 @@ function compileAndDownloadEML(emailSubject, bodyText, jobNumFinal) {
             alert("Failed to generate the email draft automatically. Please use the Download PDF / Excel buttons and draft the email manually.");
         });
 }
-}
 
 // Parse dynamic steel descriptions into Shape and Dimensions (size)
 function parseSteelDescription(desc) {

@@ -273,6 +273,21 @@
                         </div>
                     </div>
 
+                    <!-- EWO (Extra Work Order) Selection -->
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>EWO <span class="required">*</span></label>
+                        <div class="radio-toggle-group" style="max-width: 260px;">
+                            <label class="radio-label">
+                                <input type="radio" name="isEWO" value="Yes" required>
+                                <span class="radio-custom">Yes</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="isEWO" value="No" required>
+                                <span class="radio-custom">No</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Bottom Part: Dynamic Item Builder -->
                     <div class="items-builder-section">
                         <div class="builder-header">
@@ -292,6 +307,7 @@
                                     <option value="WT">WT</option>
                                     <option value="HSS">HSS</option>
                                     <option value="HSSR">HSSR</option>
+                                    <option value="PIPE">PIPE</option>
                                     <option value="C">C</option>
                                     <option value="MC">MC</option>
                                     <option value="L">L</option>
@@ -633,6 +649,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=22"></script>
+    <script src="script.js?v=27"></script>
 </body>
 </html>

@@ -72,6 +72,12 @@ const projectsDatabase = [
     { number: "46001", name: "Jefferson Eden Village" },
     { number: "46002", name: "Restland Funeral Home" },
     { number: "46005", name: "Westdale Deep Ellum" },
+    { number: "46007", name: "ANNA WATER CREEK" },
+    { number: "46009", name: "Westside Village MF" },
+    { number: "46010", name: "Torrington Wilmer" },
+    { number: "46012", name: "Trammell Crow LBJ" },
+    { number: "46013", name: "Hartwood 2 5.2026" },
+    { number: "46014", name: "TM Emerald Lake Ph. 2" },
     { number: "Custom", name: "Custom Project..." }
 ];
 
@@ -423,6 +429,11 @@ function setupEventListeners() {
         rad.addEventListener("change", updateLivePreview);
     });
 
+    // EWO radio group change
+    document.getElementsByName("isEWO").forEach(rad => {
+        rad.addEventListener("change", updateLivePreview);
+    });
+
     // Dynamic Items Builder: Add Item trigger
     document.getElementById("addItemBtn").addEventListener("click", () => {
         addItemFromBuilder();
@@ -546,7 +557,7 @@ function setupEventListeners() {
         }
     });
 
-    // Enforce Shape-Specific Input Constraints on Dimension box
+    // Update placeholder guide based on selected shape (free typing allowed for all shapes)
     const shapeSelect = document.getElementById("itemShape");
     const descInput = document.getElementById("itemDesc");
 
@@ -555,6 +566,7 @@ function setupEventListeners() {
         "WT": "Depth x Weight (e.g. 4x9)",
         "HSS": "H x W x Thk (e.g. 6x4x1/4 or 1 1/2x1 1/2x14GA)",
         "HSSR": "Dia x Thk (e.g. 5x.5 or 1.5x11GA)",
+        "PIPE": "Size & Schedule (e.g. 1 1/2STD or 1 1/2SCH10)",
         "C": "Depth x Weight (e.g. 6x13)",
         "MC": "Depth x Weight (e.g. 10x8.4)",
         "L": "Leg1 x Leg2 x Thk (e.g. 3x3x1/4)",
@@ -570,46 +582,9 @@ function setupEventListeners() {
         "QIW": "Type anything..."
     };
 
-    const shapeRegexes = {
-        "PL": /[^0-9x\/.]/gi,
-        "CP": /[^0-9x\/.]/gi,
-        "W": /[^0-9x.]/gi,
-        "WT": /[^0-9x.]/gi,
-        "C": /[^0-9x.]/gi,
-        "MC": /[^0-9x.]/gi,
-        "L": /[^0-9x\/.]/gi,
-        "HSS": /[^0-9x\/. gGvVaA\-]/gi,
-        "HSSR": /[^0-9x\/. gGvVaA\-]/gi,
-        "SQBR": /[^0-9\/.]/gi,
-        "GR": /[^a-zA-Z0-9x\/.\- *#]/gi,
-        "MDG": /[^a-zA-Z0-9x\/.\- *#]/gi,
-        "WWM": /[^a-zA-Z0-9x\/.\- *#]/gi,
-        "XF": /[^a-zA-Z0-9x\/.\- *#]/gi,
-        "KP": /[^0-9a-zA-Z\-]/gi
-    };
-
     shapeSelect.addEventListener("change", () => {
         const shape = shapeSelect.value;
         descInput.placeholder = placeholders[shape] || "e.g. 8x10...";
-        if (shapeRegexes[shape]) {
-            descInput.value = descInput.value.replace(shapeRegexes[shape], "");
-        }
-    });
-
-    descInput.addEventListener("input", () => {
-        const shape = shapeSelect.value;
-        if (shapeRegexes[shape]) {
-            const start = descInput.selectionStart;
-            const end = descInput.selectionEnd;
-            const originalVal = descInput.value;
-            const cleanedVal = originalVal.replace(shapeRegexes[shape], "");
-            
-            if (originalVal !== cleanedVal) {
-                descInput.value = cleanedVal;
-                const diff = originalVal.length - cleanedVal.length;
-                descInput.setSelectionRange(start - diff, end - diff);
-            }
-        }
     });
 }
 
@@ -642,6 +617,15 @@ function validateForm() {
     if (lineItems.length === 0) {
         alert("Please add at least one item to your Material Request using the line item builder.");
         document.getElementById("itemDesc").focus();
+        return false;
+    }
+    
+    // Extra validation: EWO must be selected (Yes or No)
+    const ewoActive = document.querySelector('input[name="isEWO"]:checked');
+    if (!ewoActive) {
+        alert("Please select whether this request is an EWO (Yes or No).");
+        const firstEwo = document.querySelector('input[name="isEWO"]');
+        if (firstEwo) firstEwo.focus();
         return false;
     }
     
@@ -952,9 +936,15 @@ function updateLivePreview() {
         document.getElementById("previewDeliveryChecked").textContent = "✓";
     }
     
-    // 6. Map Reason text
+    // 6. Map Reason text & EWO
     const reason = document.getElementById("reason").value.trim();
-    document.getElementById("previewReason").textContent = reason || "-----";
+    const ewoRadio = document.querySelector('input[name="isEWO"]:checked');
+    let reasonText = reason;
+    if (ewoRadio) {
+        const ewoTag = `EWO - ${ewoRadio.value.toUpperCase()}`;
+        reasonText = reasonText ? `${ewoTag}: ${reasonText}` : ewoTag;
+    }
+    document.getElementById("previewReason").textContent = reasonText || "-----";
     
     // 7. Value configuration Matrix
     const activeValue = document.querySelector('input[name="valueConfig"]:checked');
@@ -1230,6 +1220,8 @@ function triggerEmailLaunch() {
         finish = document.getElementById("customProductFinish").value.trim();
     }
     const location = document.querySelector('input[name="location"]:checked').value;
+    const ewoRadio = document.querySelector('input[name="isEWO"]:checked');
+    const ewoText = ewoRadio ? ewoRadio.value : "No";
     
     // Compile clean plain-text body summary
     let bodyText = `A manual material request has been generated for Job #${jobNumFinal} (${jobNameFinal}).\n\n`;
@@ -1242,6 +1234,7 @@ function triggerEmailLaunch() {
     bodyText += `* Subcategory: ${subcategory}\n`;
     bodyText += `* Product Finish: ${finish}\n`;
     bodyText += `* Destination: ${location}\n`;
+    bodyText += `* EWO: ${ewoText}\n`;
     bodyText += `------------------------------------------\n\n`;
     bodyText += `Total Line Items: ${lineItems.length} items.\n\n`;
     bodyText += `Please see attached PDF and FBOM files.\n\n`;
